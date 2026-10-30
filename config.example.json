@@ -1,0 +1,28 @@
+{
+  "port": 3000,
+  "wakeTime": "07:00",
+  "llm": {
+    "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+    "apiKey": "在这里填入你的 GLM API Key",
+    "model": "glm-5.3-flash"
+  },
+  "embeddingModel": "embedding-3",
+  "embedding": {
+    "baseUrl": "",
+    "apiKey": "",
+    "model": ""
+  },
+  "rag": { "topK": 3, "threshold": 0.3 },
+  "mcpServers": [
+    { "name": "demo", "transport": "stdio", "command": "node", "args": ["mcp-demo/server.mjs"] }
+  ],
+  "crisisKeywords": [
+    "想死", "不想活", "轻生", "自杀", "自残", "结束生命", "结束自己的生命",
+    "离开这个世界", "离开人世", "没有我会更好", "没有我世界会更好",
+    "活着没意思", "想消失", "活不下去了"
+  ],
+  "hotlines": [
+    { "name": "全国统一心理援助热线", "phone": "12356" },
+    { "name": "希望24热线", "phone": "400-161-9995" }
+  ]
+}

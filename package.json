@@ -1,0 +1,19 @@
+{
+  "name": "xinling-gangwan",
+  "version": "0.1.0",
+  "description": "心灵港湾 · 情绪日记与树洞分析小站（本地 Node 服务 + 浏览器前端）",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "seed": "node scripts/seed-demo.js",
+    "build:kb": "node scripts/build-kb.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3"
+  }
+}

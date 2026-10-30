@@ -1,0 +1,21 @@
+# 依赖与运行产物
+node_modules/
+
+# 本地配置（含 API Key，绝不入库）
+config.json
+
+# 用户数据（日记/对话/任务等隐私数据，只留在本机）
+data/
+
+# 个人求职材料与内部文档（含真实信息，绝不入库）
+_ppt_assets/
+*.pptx
+*.pdf
+心灵港湾-八课学习课程.html
+项目计划书.md
+项目约束文档.md
+
+# 杂项
+*.log
+.DS_Store
+Thumbs.db
