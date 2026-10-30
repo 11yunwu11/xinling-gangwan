@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>心灵港湾</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="side-brand" title="心灵港湾">🌊</div>
+      <nav class="side-nav">
+        <button class="side-btn tab active" data-tab="chat" title="树洞"><span class="ico">💬</span><span>树洞</span></button>
+        <button class="side-btn tab" data-tab="diary" title="日记"><span class="ico">📖</span><span>日记</span></button>
+        <button class="side-btn tab" data-tab="tasks" title="任务清单"><span class="ico">✅</span><span>任务</span></button>
+        <button class="side-btn tab" data-tab="review" title="回顾"><span class="ico">📊</span><span>回顾</span></button>
+        <button class="side-btn tab" data-tab="abilities" title="能力"><span class="ico">🧩</span><span>能力</span></button>
+      </nav>
+      <button id="btn-theme" class="side-btn" title="切换到黑夜模式"><span class="ico">☾</span><span>夜间</span></button>
+      <button id="btn-settings" class="side-btn gear" title="设置"><span class="ico">⚙</span><span>设置</span></button>
+    </aside>
+
+  <main>
+    <!-- 树洞对话 -->
+    <section id="view-chat" class="view active">
+      <div id="comfort-card" class="comfort-card hidden">
+        <div class="comfort-head">🌅 早安</div>
+        <div id="comfort-text" class="comfort-text"></div>
+        <button id="comfort-ok" class="comfort-ok">收下这份早安 ✓</button>
+      </div>
+      <div id="chat-toolbar" class="chat-toolbar">
+        <button id="chat-history-btn" class="history-btn">🗂 历史对话</button>
+        <span id="chat-viewing" class="chat-viewing hidden"></span>
+        <button id="chat-back-today" class="history-btn hidden">← 返回今天</button>
+      </div>
+      <div id="chat-history-panel" class="chat-history-panel hidden"></div>
+      <div id="chat-log" class="chat-log">
+        <div class="chat-empty">
+          <p>这里是你的树洞。</p>
+          <p>今天过得怎么样？想说什么都可以。</p>
+        </div>
+      </div>
+
+      <div id="crisis-card" class="crisis-card hidden"></div>
+      <div id="status-line" class="status-line hidden"></div>
+
+      <form id="chat-form" class="chat-form">
+        <textarea id="chat-input" rows="1" placeholder="想说的话…（也可以用输入法的语音转文字）"></textarea>
+        <button type="submit" id="send-btn">发送</button>
+      </form>
+    </section>
+
+    <!-- 日记（MA2 记忆库语料） -->
+    <section id="view-diary" class="view">
+      <h2>今日日记</h2>
+      <p class="hint">写几句话，AI 会帮你总结情绪和关键事件，并成为树洞的长期记忆。</p>
+      <form id="diary-form" class="diary-form">
+        <textarea id="diary-input" rows="5" placeholder="今天发生了什么，心情如何…"></textarea>
+        <button type="submit" id="diary-save">保存并总结</button>
+      </form>
+      <div id="diary-status" class="status-line hidden"></div>
+      <h2 class="history-title">历史日记</h2>
+      <ul id="diary-list" class="diary-list"></ul>
+      <p id="diary-empty" class="hint hidden">还没有日记。</p>
+    </section>
+
+    <!-- 任务清单 -->
+    <section id="view-tasks" class="view">
+      <h2>任务清单</h2>
+      <p class="hint">每天都会有一个系统小任务，完成就点「打卡完成」；也可以和树洞说「设定一个任务，我要……」或「帮我把 XX 拆成每日任务」。</p>
+      <ul id="task-list" class="task-list"></ul>
+      <p id="task-empty" class="hint hidden">还没有任务。</p>
+    </section>
+
+    <!-- 回顾与分析（M5 / F9） -->
+    <section id="view-review" class="view">
+      <h2>回顾与分析</h2>
+      <p class="hint">所有图表都来自你自己的日记记录；AI 周报只做归纳，不做诊断。</p>
+
+      <h3>本月月历 <span class="sec-note">有记录的日子按主情绪着色，点击查看那天写了什么</span></h3>
+      <div id="calendar" class="calendar"></div>
+
+      <h3>最近 30 天情绪带</h3>
+      <div id="emotion-strip" class="emotion-strip"></div>
+
+      <h3>记录热力图 <span class="sec-note">最近 17 周</span></h3>
+      <div id="heatmap" class="heatmap"></div>
+
+      <div class="two-col">
+        <div>
+          <h3>情绪标签</h3>
+          <div id="tag-bars" class="bars"></div>
+        </div>
+        <div>
+          <h3>高频主题</h3>
+          <div id="theme-bars" class="bars"></div>
+        </div>
+      </div>
+
+      <h3>AI 本周回顾</h3>
+      <div id="report-card" class="report-card">还没有周报。每周一早上会自动生成，也可以现在手动生成。</div>
+      <button id="report-gen" class="complete-btn">生成最新周报</button>
+    </section>
+
+    <!-- 能力面板（MA3：Skills + MCP） -->
+    <section id="view-abilities" class="view">
+      <h2>Agent 能力面板</h2>
+      <p class="hint">这里展示 agent 当前挂载的全部能力——内置工具、外挂技能（skills/*.md）与 MCP 外部工具。</p>
+
+      <h3>内置工具</h3>
+      <ul id="builtin-list" class="ability-list"></ul>
+
+      <h3>外挂技能（skills/*.md）</h3>
+      <details class="add-panel">
+        <summary>＋ 添加自定义技能</summary>
+        <form id="skill-add-form" class="add-form">
+          <label>技能名（小写英文/数字/-/_，注册为 skill_名字）
+            <input id="sk-name" placeholder="如 breathing">
+          </label>
+          <label>何时调用（一句话，模型据此决定要不要调用）
+            <input id="sk-desc" maxlength="120" placeholder="如 当用户想做放松练习或深呼吸时调用">
+          </label>
+          <label>注入上下文
+            <select id="sk-context">
+              <option value="none">无</option>
+              <option value="knowledge">知识库检索（按用户消息取相关卡片）</option>
+              <option value="week_diaries">最近 7 天日记</option>
+              <option value="previous_diary">上一逻辑日日记</option>
+            </select>
+          </label>
+          <label>提示词模板（可用 {{context}} 注入上下文、{{user_request}} 注入用户消息）
+            <textarea id="sk-body" rows="6" placeholder="你是一个放松引导助手。请根据上下文引导用户完成一次简单的练习…"></textarea>
+          </label>
+          <p class="form-msg hidden"></p>
+          <button type="submit">保存技能</button>
+        </form>
+      </details>
+      <ul id="skill-list" class="ability-list"></ul>
+
+      <h3>MCP 外部工具</h3>
+      <ul id="mcp-list" class="ability-list"></ul>
+      <p id="mcp-empty" class="hint hidden">暂未连接 MCP 服务器。</p>
+
+      <h3>知识库（knowledge/*.md）</h3>
+      <p class="hint" id="kb-status">正在加载…</p>
+      <details class="add-panel">
+        <summary>＋ 添加自定义卡片</summary>
+        <form id="kb-add-form" class="add-form">
+          <label>标题
+            <input id="kb-title" maxlength="60" placeholder="如 考试焦虑的应对">
+          </label>
+          <label>标签（逗号分隔，可选）
+            <input id="kb-tags" placeholder="焦虑,校园">
+          </label>
+          <label>内容（讲什么概念、怎么应对）
+            <textarea id="kb-text" rows="6" placeholder="这张卡片描述…觉察与应对：…"></textarea>
+          </label>
+          <p class="form-msg hidden"></p>
+          <button type="submit">保存卡片</button>
+        </form>
+      </details>
+      <ul id="kb-list" class="kb-list"></ul>
+      <p class="hint">内置卡片与内置技能受保护、不可删除（保证危机等安全兜底永远在）；自定义内容随时可增删。</p>
+      <p id="kb-empty" class="hint hidden">知识库还没有构建。配置好 API Key 后服务会自动构建（knowledge/ 目录里的卡片 → 向量化入库）。</p>
+    </section>
+  </main>
+  </div>
+
+  <!-- 首次启动 / 设置弹窗 -->
+  <div id="setup-overlay" class="overlay hidden">
+    <div class="modal">
+      <h2 id="setup-title">欢迎使用心灵港湾 🌊</h2>
+      <p class="hint" id="setup-sub">首次使用只需一步：填入你的 API Key。它只会保存在你自己电脑的 config.json 里（该文件已排除在代码仓库外），不会上传到任何地方。</p>
+      <label>API Key
+        <input id="cfg-key" type="password" autocomplete="off" placeholder="粘贴你的 GLM API Key">
+      </label>
+      <label>对话模型
+        <input id="cfg-model" placeholder="glm-5.3-flash">
+      </label>
+      <label>接口地址（OpenAI 兼容）
+        <input id="cfg-baseurl" placeholder="https://open.bigmodel.cn/api/paas/v4">
+      </label>
+      <label>起床时间（逻辑日切分线，夜班工作者可改为如 16:00）
+        <input id="cfg-wake" placeholder="07:00">
+      </label>
+      <details id="emb-advanced">
+        <summary>Embedding 独立接口（可选，默认与对话模型同一服务）</summary>
+        <label>Embedding 接口地址（OpenAI 兼容）
+          <input id="cfg-emb-baseurl" placeholder="留空则与对话接口相同">
+        </label>
+        <label>Embedding API Key
+          <input id="cfg-emb-key" type="password" autocomplete="off">
+        </label>
+        <label>Embedding 模型
+          <input id="cfg-embedding" placeholder="embedding-3">
+        </label>
+      </details>
+      <p id="cfg-error" class="cfg-error hidden"></p>
+      <div class="modal-actions">
+        <button id="cfg-save">保存并开始</button>
+      </div>
+      <div class="backup-section">
+        <h3>数据备份</h3>
+        <p class="hint">所有数据只存在你自己电脑的 data/ 目录；导出文件为明文 JSON（不含 Key）。</p>
+        <div class="backup-actions">
+          <button id="btn-export" class="complete-btn">导出全部数据</button>
+          <label class="import-label">导入<input id="import-file" type="file" accept=".json" hidden></label>
+          <select id="import-mode">
+            <option value="merge">合并</option>
+            <option value="overwrite">覆盖</option>
+          </select>
+        </div>
+        <p id="backup-status" class="hint"></p>
+      </div>
+      <p class="tender">修改模型后建议重启服务，并运行一次 npm run build:kb 重建知识库向量。</p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
