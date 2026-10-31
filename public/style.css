@@ -266,7 +266,10 @@ main { flex: 1; padding: 24px 20px 40px; min-width: 0; }
   max-height: 140px;
   background: transparent;
   color: var(--ink);
+  /* 输入超长时隐藏滚动条（滚轮仍可滚动） */
+  scrollbar-width: none;
 }
+#chat-input::-webkit-scrollbar { display: none; }
 
 #send-btn {
   border: none;
