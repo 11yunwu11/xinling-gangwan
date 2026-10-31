@@ -505,6 +505,78 @@ main { flex: 1; padding: 24px 20px 40px; min-width: 0; }
 .day-diary ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
 .day-task { margin: 4px 0; font-size: 13.5px; }
 
+/* 任务页日历绑定 */
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 4px 0 8px;
+}
+.cal-nav-btn {
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--accent);
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  line-height: 1;
+  font-size: 15px;
+  cursor: pointer;
+}
+.cal-nav-btn:hover { background: var(--accent-soft); }
+#task-cal-label { font-size: 14px; font-weight: 600; color: var(--ink); }
+
+.cal-cell { position: relative; }
+.cal-cell.has-tasks { border: 1px solid var(--accent); }
+.cal-cell.selected { outline: 2px solid var(--accent); outline-offset: -2px; }
+.cal-badge {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  min-width: 15px;
+  height: 15px;
+  line-height: 15px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 10px;
+  text-align: center;
+  padding: 0 3px;
+}
+.cal-badge.all-done { background: var(--accent-soft); color: var(--accent); }
+
+.task-day-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-top: 1px solid var(--border-soft);
+}
+.task-day-row:first-of-type { border-top: none; }
+.task-day-row .task-day-title { flex: 1; min-width: 0; font-size: 13.5px; }
+.task-day-row.done .task-day-title { color: var(--muted); }
+.task-day-row .complete-btn { padding: 3px 10px; font-size: 12px; }
+.task-day-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-soft);
+}
+.task-day-form input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 7px 10px;
+  outline: none;
+}
+.task-day-form input:focus { border-color: var(--accent); }
+
 /* 设置弹窗内的 MCP 区 */
 #mcp-advanced {
   margin: 8px 0 0;

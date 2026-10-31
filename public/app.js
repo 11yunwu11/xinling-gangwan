@@ -543,35 +543,195 @@ $('#diary-form').addEventListener('submit', async (e) => {
   }
 });
 
-/* ---------- 任务清单 ---------- */
-const SOURCE_LABEL = { agent: '树洞记的', system: '今日任务' };
+/* ---------- 任务清单（日历绑定） ---------- */
+const SOURCE_LABEL = { agent: '树洞记的', system: '今日任务', manual: '手动添加' };
 
-async function completeTask(id, li) {
-  const btn = li.querySelector('.complete-btn');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '…';
+let taskState = { todayKey: null, tasks: [] };
+let taskCalMonth = null; // { y, m } 当前查看的月份
+let selectedTaskDay = null; // 日历上选中的日期
+
+function fmtDateKey(d) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// 通用月历骨架：返回 { grid, cells: [{key, cell}] }（key 为 YYYY-MM-DD，null 为占位）
+function buildCalendarGrid(y, m) {
+  const grid = document.createElement('div');
+  grid.className = 'calendar';
+  ['日', '一', '二', '三', '四', '五', '六'].forEach((w) => {
+    const head = document.createElement('div');
+    head.className = 'cal-head';
+    head.textContent = w;
+    grid.appendChild(head);
+  });
+  const firstWeekday = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstWeekday; i++) {
+    grid.appendChild(document.createElement('div'));
+    cells.push(null);
   }
-  try {
-    const t = await (await fetch(`/api/tasks/${id}/complete`, { method: 'POST' })).json();
-    if (t.error) throw new Error(t.error);
-    loadTasks();
-  } catch {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = '打卡完成';
+  for (let day = 1; day <= daysInMonth; day++) {
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell';
+    cell.textContent = day;
+    grid.appendChild(cell);
+    cells.push({ key: fmtDateKey(new Date(y, m, day)), cell });
+  }
+  return { grid, cells };
+}
+
+function renderTaskCalendar() {
+  const cal = $('#task-calendar');
+  cal.innerHTML = '';
+  const { y, m } = taskCalMonth;
+  $('#task-cal-label').textContent = `${y} 年 ${m + 1} 月`;
+
+  const byDay = {};
+  for (const t of taskState.tasks) (byDay[t.date] || (byDay[t.date] = [])).push(t);
+
+  const { grid, cells } = buildCalendarGrid(y, m);
+  for (const entry of cells) {
+    if (!entry) continue;
+    const { key, cell } = entry;
+    const dayTasks = byDay[key] || [];
+    if (dayTasks.length) {
+      const open = dayTasks.filter((t) => t.status !== 'done').length;
+      const badge = document.createElement('span');
+      badge.className = 'cal-badge' + (open ? '' : ' all-done');
+      badge.textContent = open ? String(open) : '✓';
+      badge.title = open ? `${open} 个待办` : '全部完成';
+      cell.appendChild(badge);
+      cell.classList.add('has-tasks');
+      cell.style.cursor = 'pointer';
+    }
+    if (key === taskState.todayKey) cell.classList.add('today');
+    if (key === selectedTaskDay) cell.classList.add('selected');
+    if (dayTasks.length || key === taskState.todayKey || key === selectedTaskDay) {
+      cell.addEventListener('click', () => {
+        selectedTaskDay = key;
+        renderTaskCalendar();
+        renderTaskDay();
+      });
     }
   }
+  cal.appendChild(grid);
+}
+
+function renderTaskDay() {
+  const panel = $('#task-day');
+  const key = selectedTaskDay || taskState.todayKey;
+  panel.innerHTML = '';
+
+  const title = document.createElement('h4');
+  title.textContent = key === taskState.todayKey ? `今天（${key}）的任务` : `${key} 的任务`;
+  panel.appendChild(title);
+
+  const dayTasks = taskState.tasks.filter((t) => t.date === key);
+  if (!dayTasks.length) {
+    const p = document.createElement('p');
+    p.className = 'hint';
+    p.textContent = '这一天还没有任务，在下面添加一个吧。';
+    panel.appendChild(p);
+  }
+  for (const t of dayTasks) {
+    const row = document.createElement('div');
+    row.className = 'task-day-row' + (t.status === 'done' ? ' done' : '');
+    const label = document.createElement('span');
+    label.className = 'task-day-title';
+    label.textContent = (t.status === 'done' ? '✅ ' : '') + t.title;
+    row.appendChild(label);
+    if (t.status !== 'done') {
+      const btn = document.createElement('button');
+      btn.className = 'complete-btn';
+      btn.textContent = '打卡';
+      btn.addEventListener('click', async () => {
+        try {
+          const r = await (await fetch(`/api/tasks/${t.id}/complete`, { method: 'POST' })).json();
+          if (r.error) throw new Error(r.error);
+          loadTasks();
+        } catch (err) {
+          alert(`打卡失败：${err.message}`);
+        }
+      });
+      row.appendChild(btn);
+    }
+    const del = document.createElement('button');
+    del.className = 'item-del';
+    del.textContent = '删除';
+    del.title = '删除这个任务';
+    del.addEventListener('click', async () => {
+      if (!confirm(`删除任务「${t.title}」吗？`)) return;
+      try {
+        const r = await (await fetch(`/api/tasks/${t.id}`, { method: 'DELETE' })).json();
+        if (r.error) throw new Error(r.error);
+        loadTasks();
+      } catch (err) {
+        alert(`删除失败：${err.message}`);
+      }
+    });
+    row.appendChild(del);
+    panel.appendChild(row);
+  }
+
+  // 添加表单：任务归属到选中的这一天
+  const form = document.createElement('div');
+  form.className = 'task-day-form';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = '给这一天加个任务，如：睡前拉伸五分钟';
+  input.maxLength = 120;
+  const add = document.createElement('button');
+  add.className = 'complete-btn';
+  add.textContent = '添加到此天';
+  add.addEventListener('click', async () => {
+    const title = input.value.trim();
+    if (!title) return;
+    add.disabled = true;
+    try {
+      const r = await (await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, date: key }),
+      })).json();
+      if (r.error) throw new Error(r.error);
+      selectedTaskDay = key;
+      loadTasks();
+    } catch (err) {
+      alert(`添加失败：${err.message}`);
+      add.disabled = false;
+    }
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      add.click();
+    }
+  });
+  form.appendChild(input);
+  form.appendChild(add);
+  panel.appendChild(form);
 }
 
 async function loadTasks() {
   const list = $('#task-list');
   const empty = $('#task-empty');
   try {
-    const tasks = await (await fetch('/api/tasks')).json();
+    const data = await (await fetch('/api/tasks')).json();
+    taskState = { todayKey: data.todayKey, tasks: data.tasks };
+    if (!taskCalMonth) {
+      const now = new Date();
+      taskCalMonth = { y: now.getFullYear(), m: now.getMonth() };
+    }
+    if (!selectedTaskDay) selectedTaskDay = taskState.todayKey;
+    renderTaskCalendar();
+    renderTaskDay();
+
+    // 全部任务列表（保持原有形态，新的在前）
     list.innerHTML = '';
-    empty.classList.toggle('hidden', tasks.length > 0);
-    for (const t of tasks) {
+    empty.classList.toggle('hidden', taskState.tasks.length > 0);
+    for (const t of taskState.tasks) {
       const li = document.createElement('li');
       li.className = 'task-item';
       const meta = document.createElement('div');
@@ -611,6 +771,35 @@ async function loadTasks() {
   } catch {
     empty.textContent = '任务加载失败，稍后再试。';
     empty.classList.remove('hidden');
+  }
+}
+
+$('#task-cal-prev').addEventListener('click', () => {
+  taskCalMonth.m -= 1;
+  if (taskCalMonth.m < 0) { taskCalMonth.m = 11; taskCalMonth.y -= 1; }
+  renderTaskCalendar();
+});
+$('#task-cal-next').addEventListener('click', () => {
+  taskCalMonth.m += 1;
+  if (taskCalMonth.m > 11) { taskCalMonth.m = 0; taskCalMonth.y += 1; }
+  renderTaskCalendar();
+});
+
+async function completeTask(id, li) {
+  const btn = li.querySelector('.complete-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '…';
+  }
+  try {
+    const t = await (await fetch(`/api/tasks/${id}/complete`, { method: 'POST' })).json();
+    if (t.error) throw new Error(t.error);
+    loadTasks();
+  } catch {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '打卡完成';
+    }
   }
 }
 
@@ -1015,11 +1204,6 @@ function showDayDetail(key, diaries, tasks) {
   }
 
   panel.classList.remove('hidden');
-}
-
-function fmtDateKey(d) {
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
 async function loadReview() {

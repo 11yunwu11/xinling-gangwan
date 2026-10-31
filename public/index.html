@@ -69,7 +69,17 @@
     <!-- 任务清单 -->
     <section id="view-tasks" class="view">
       <h2>任务清单</h2>
-      <p class="hint">每天都会有一个系统小任务，完成就点「打卡完成」；也可以和树洞说「设定一个任务，我要……」或「帮我把 XX 拆成每日任务」。</p>
+      <p class="hint">每天都会有一个系统小任务；点日历上的日期可以查看、添加那天的任务。也可以和树洞说「设定一个任务，我要……」或「帮我把 XX 拆成每日任务」。</p>
+
+      <div class="cal-nav">
+        <button id="task-cal-prev" class="cal-nav-btn" title="上个月">‹</button>
+        <span id="task-cal-label"></span>
+        <button id="task-cal-next" class="cal-nav-btn" title="下个月">›</button>
+      </div>
+      <div id="task-calendar" class="calendar"></div>
+      <div id="task-day" class="day-detail"></div>
+
+      <h3>全部任务</h3>
       <ul id="task-list" class="task-list"></ul>
       <p id="task-empty" class="hint hidden">还没有任务。</p>
     </section>
