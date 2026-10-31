@@ -526,6 +526,31 @@ main { flex: 1; padding: 24px 20px 40px; min-width: 0; }
 .cal-nav-btn:hover { background: var(--accent-soft); }
 #task-cal-label { font-size: 14px; font-weight: 600; color: var(--ink); }
 
+/* 任务页专属大格日历（覆盖 .calendar 的小尺寸基线） */
+#task-calendar { max-width: none; gap: 6px; }
+#task-calendar .cal-head { font-size: 12.5px; font-weight: 600; padding: 6px 0; }
+#task-calendar .cal-cell {
+  aspect-ratio: auto;
+  min-height: 64px;
+  padding: 8px 10px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: background .12s;
+}
+#task-calendar .cal-cell:hover { background: var(--accent-soft); }
+#task-calendar div:empty { min-height: 64px; }
+#task-calendar .cal-badge {
+  right: 8px;
+  bottom: 8px;
+  min-width: 20px;
+  height: 20px;
+  line-height: 20px;
+  font-size: 12px;
+}
+
 .cal-cell { position: relative; }
 .cal-cell.has-tasks { border: 1px solid var(--accent); }
 .cal-cell.selected { outline: 2px solid var(--accent); outline-offset: -2px; }
