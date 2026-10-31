@@ -22,9 +22,11 @@ module.exports = () => {
     });
 
     // 客户端中途断开（刷新/关页）时：停止向已销毁的 socket 写入，避免 EPIPE 未捕获错误打崩进程；
-    // agent 本轮照常跑完（结果照常落盘），只是不再对外发送
+    // agent 本轮照常跑完（结果照常落盘），只是不再对外发送。
+    // 注意：要监听 res 的 close（连接真正断开），不能监听 req——Node 18+ 里请求体被
+    // express.json() 消费完就会触发 req 的 close，会把整个流静默掐死。
     let closed = false;
-    req.on('close', () => { closed = true; });
+    res.on('close', () => { closed = true; });
     res.on('error', () => { closed = true; });
     const send = (ev) => {
       if (closed || res.writableEnded || res.destroyed) return;
@@ -44,7 +46,11 @@ module.exports = () => {
     } catch (err) {
       send({ type: 'error', message: err.message || '服务内部错误' });
     }
-    if (!closed && !res.destroyed) res.end();
+    try {
+      if (!res.writableEnded) res.end();
+    } catch {
+      /* socket 已死，无需收尾 */
+    }
   });
 
   return router;
