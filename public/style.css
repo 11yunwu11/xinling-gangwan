@@ -53,53 +53,72 @@ body {
   color: var(--ink);
 }
 
-/* ---------- 布局与侧边导航 ---------- */
+/* ---------- 布局与侧边导航（可折叠：展开=图标+文字，收起=纯图标） ---------- */
 .layout { display: flex; min-height: 100vh; }
 
 .sidebar {
   position: sticky;
   top: 0;
   height: 100vh;
-  width: 68px;
+  width: 184px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
-  padding: 16px 8px;
+  padding: 14px 10px;
   background: var(--panel);
   border-right: 1px solid var(--border);
+  transition: width .18s ease;
+  overflow: hidden;
 }
 
-.side-brand { font-size: 22px; margin-bottom: 6px; }
+.side-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
+  margin: 0 4px 6px;
+  white-space: nowrap;
+}
+.side-brand .brand-name { font-size: 14px; font-weight: 700; color: var(--ink); }
 
-.side-nav { display: flex; flex-direction: column; gap: 6px; flex: 1; width: 100%; align-items: center; }
+.side-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; width: 100%; }
 
 .side-btn {
-  width: 56px;
+  width: 100%;
   border: none;
   background: transparent;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 2px;
-  padding: 8px 0;
-  border-radius: 12px;
-  font-size: 11px;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
   color: var(--muted);
   cursor: pointer;
+  white-space: nowrap;
 }
-.side-btn .ico { font-size: 18px; }
+.side-btn .ico { font-size: 17px; width: 20px; text-align: center; flex-shrink: 0; }
 .side-btn:hover { background: var(--bg); }
 .tab.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+#btn-toggle { color: var(--muted); }
+#btn-toggle > span:last-child { margin-left: auto; font-size: 12px; }
 .gear { margin-top: 4px; }
+
+/* 收起态：纯图标竖排 */
+body.side-collapsed .sidebar { width: 60px; padding: 14px 8px; align-items: center; }
+body.side-collapsed .side-nav { align-items: center; }
+body.side-collapsed .side-brand { justify-content: center; margin: 0 0 6px; }
+body.side-collapsed .side-brand .brand-name,
+body.side-collapsed .side-btn > span:not(.ico) { display: none; }
+body.side-collapsed .side-btn { width: 44px; flex-direction: column; gap: 2px; padding: 8px 0; font-size: 10px; }
+body.side-collapsed .side-btn .ico { font-size: 17px; width: auto; }
 
 main { flex: 1; padding: 24px 20px 40px; min-width: 0; }
 
 @media (max-width: 600px) {
-  .sidebar { width: 54px; padding: 10px 5px; }
-  .side-btn { width: 46px; font-size: 10px; }
-  .side-btn .ico { font-size: 16px; }
   main { padding: 14px 10px 30px; }
 }
 

@@ -15,6 +15,38 @@ document.querySelectorAll('.tab').forEach((btn) => {
   });
 });
 
+/* ---------- 侧栏折叠 ---------- */
+// localStorage 记住选择；首次访问按屏宽定初始态（窄屏收起、宽屏展开）
+const SIDEBAR_KEY = 'xlgw-sidebar';
+
+function applySidebar(collapsed) {
+  document.body.classList.toggle('side-collapsed', collapsed);
+  const lbl = document.querySelector('#btn-toggle > span:last-child');
+  if (lbl) lbl.textContent = collapsed ? '展开' : '收起';
+  const btn = $('#btn-toggle');
+  if (btn) btn.title = collapsed ? '展开侧栏' : '折叠侧栏';
+}
+
+(function initSidebar() {
+  let saved = null;
+  try {
+    saved = localStorage.getItem(SIDEBAR_KEY);
+  } catch {
+    /* 无存储则按屏宽 */
+  }
+  applySidebar(saved ? saved === 'collapsed' : window.innerWidth <= 700);
+})();
+
+$('#btn-toggle').addEventListener('click', () => {
+  const collapsed = !document.body.classList.contains('side-collapsed');
+  try {
+    localStorage.setItem(SIDEBAR_KEY, collapsed ? 'collapsed' : 'expanded');
+  } catch {
+    /* 存不进就只对本页生效 */
+  }
+  applySidebar(collapsed);
+});
+
 /* ---------- 白天/黑夜模式 ---------- */
 // localStorage 记住选择；没选过则跟随系统；系统主题变化时（没手动选过）实时跟随
 const THEME_KEY = 'xlgw-theme';
