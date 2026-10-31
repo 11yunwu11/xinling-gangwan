@@ -5,23 +5,12 @@
 const fs = require('fs');
 const path = require('path');
 const store = require('./store');
+const { parseFrontmatter } = require('./frontmatter');
 const { embed, embedParams } = require('./embedding');
 
 const KB_DIR = path.join(__dirname, '..', '..', 'knowledge');
 // 用户自建卡片存 data/knowledge/（同一格式）；内置目录 knowledge/ 受保护，API 只能增删用户目录
 const USER_KB_DIR = () => path.join(store.DATA_DIR, 'knowledge');
-
-// 解析简单 frontmatter（--- 包裹的 key: value 行）+ 正文
-function parseCard(raw) {
-  const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
-  if (!m) return { meta: {}, body: raw.trim() };
-  const meta = {};
-  for (const line of m[1].split(/\r?\n/)) {
-    const kv = line.match(/^(\w[\w-]*):\s*(.*)$/);
-    if (kv) meta[kv[1].trim()] = kv[2].trim();
-  }
-  return { meta, body: m[2].trim() };
-}
 
 function readCardsFrom(dir, builtin) {
   if (!fs.existsSync(dir)) return [];
@@ -29,7 +18,7 @@ function readCardsFrom(dir, builtin) {
     .readdirSync(dir)
     .filter((f) => f.endsWith('.md'))
     .map((f) => {
-      const { meta, body } = parseCard(fs.readFileSync(path.join(dir, f), 'utf8'));
+      const { meta, body } = parseFrontmatter(fs.readFileSync(path.join(dir, f), 'utf8'));
       return {
         id: f.replace(/\.md$/, ''),
         title: meta.title || f.replace(/\.md$/, ''),
@@ -77,13 +66,17 @@ async function ensureKb(cfg, { force = false } = {}) {
   const cards = readCards();
   if (!cards.length) return { built: false, count: 0, reason: 'knowledge/ 目录没有卡片' };
 
-  const cardsKey = JSON.stringify(cards.map((c) => [c.id, c.title, c.text, c.builtin ? 1 : 0]));
+  const params = embedParams(cfg);
+  // 指纹含 embedding 参数（baseUrl+model）：换模型 → 指纹变 → 自动重建，避免新旧向量空间混算
+  const cardsKey = JSON.stringify({
+    emb: { baseUrl: params.baseUrl || '', model: params.model || '' },
+    cards: cards.map((c) => [c.id, c.title, c.text, c.builtin ? 1 : 0]),
+  });
   const existing = store.readKb();
   if (!force && existing && existing._cardsKey === cardsKey) {
     return { built: false, count: existing.entries.length, reason: '已是最新' };
   }
 
-  const params = embedParams(cfg);
   if (!params.apiKey || params.apiKey.includes('填入')) {
     return { built: false, count: existing ? existing.entries.length : 0, reason: '未配置 API Key，暂用旧知识库' };
   }

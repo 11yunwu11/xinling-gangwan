@@ -12,25 +12,29 @@ const path = require('path');
 const store = require('./store');
 const time = require('./time');
 const rag = require('./rag');
+const { parseFrontmatter } = require('./frontmatter');
+const { diaryLine } = require('./diary');
 const { embedOne, embedParams } = require('./embedding');
-const { chatStream } = require('./llm');
+const { chatStream, llmParams } = require('./llm');
 
 const SKILLS_DIR = path.join(__dirname, '..', '..', 'skills');
 // 用户自建技能存 data/skills/（同一 md 格式）；内置目录 skills/ 受保护，API 只能增删用户目录
 const USER_SKILLS_DIR = () => path.join(store.DATA_DIR, 'skills');
 
-function parseFrontmatter(raw) {
-  const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
-  if (!m) return { meta: {}, body: raw.trim() };
-  const meta = {};
-  for (const line of m[1].split(/\r?\n/)) {
-    const kv = line.match(/^([\w-]+):\s*(.*)$/);
-    if (kv) meta[kv[1].trim()] = kv[2].trim();
-  }
-  return { meta, body: m[2].trim() };
-}
-
 let cached = null;
+let cachedStamp = '';
+
+// 目录 mtime 指纹：手动往目录里放/删 md 文件也即刻生效，不必重启（计划书 F7）
+function dirStamp() {
+  const stamp = (dir) => {
+    try {
+      return fs.statSync(dir).mtimeMs;
+    } catch {
+      return 0;
+    }
+  };
+  return `${stamp(SKILLS_DIR)}|${stamp(USER_SKILLS_DIR())}`;
+}
 
 function readDirSkills(dir, builtin) {
   if (!fs.existsSync(dir)) return [];
@@ -50,7 +54,8 @@ function readDirSkills(dir, builtin) {
 }
 
 function listSkills() {
-  if (cached) return cached;
+  const stamp = dirStamp();
+  if (cached && cachedStamp === stamp) return cached;
   const builtins = readDirSkills(SKILLS_DIR, true);
   const builtinNames = new Set(builtins.map((s) => s.name));
   // 自定义技能与内置重名时忽略（内置优先，防止覆盖危机兜底等关键技能）
@@ -62,25 +67,41 @@ function listSkills() {
     return true;
   });
   cached = [...builtins, ...users];
+  cachedStamp = stamp;
   return cached;
+}
+
+// 可调用的技能（排除危机指引——它仅供内置 crisis_support 工具读取，非调用型）
+function callableSkills() {
+  return listSkills().filter((s) => s.name !== 'crisis-response');
 }
 
 // 用户文件变动后由路由调用，下一次 listSkills 重新扫盘
 function refresh() {
   cached = null;
+  cachedStamp = '';
 }
 
 function isBuiltinName(name) {
   return listSkills().some((s) => s.builtin && s.name === name);
 }
 
-// 新增自定义技能（写 data/skills/<name>.md）；name 必须已通过路由层校验
+// 新增自定义技能（写 data/skills/<name>.md）。路由层已校验；这里再做一层防御性净化，
+// 保证导入等旁路进来的数据也破坏不了 frontmatter 结构
 function writeSkill({ name, description, context = 'none', body }) {
+  const cleanName = String(name).trim().toLowerCase();
+  if (!/^[a-z][a-z0-9_-]{0,31}$/.test(cleanName)) throw new Error(`非法技能名：${name}`);
+  const cleanDesc = String(description).replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+  if (!cleanDesc) throw new Error('技能 description 不能为空');
+  const cleanContext = ['none', 'knowledge', 'week_diaries', 'previous_diary'].includes(context) ? context : 'none';
+  const cleanBody = String(body).replace(/\r\n/g, '\n').trim().slice(0, 8000);
+  if (!cleanBody) throw new Error('技能提示词模板不能为空');
+
   fs.mkdirSync(USER_SKILLS_DIR(), { recursive: true });
-  const md = `---\nname: ${name}\ndescription: ${description}\ncontext: ${context}\n---\n\n${body}\n`;
-  fs.writeFileSync(path.join(USER_SKILLS_DIR(), `${name}.md`), md, 'utf8');
+  const md = `---\nname: ${cleanName}\ndescription: ${cleanDesc}\ncontext: ${cleanContext}\n---\n\n${cleanBody}\n`;
+  fs.writeFileSync(path.join(USER_SKILLS_DIR(), `${cleanName}.md`), md, 'utf8');
   refresh();
-  return { name, description, context, body, builtin: false };
+  return { name: cleanName, description: cleanDesc, context: cleanContext, body: cleanBody, builtin: false };
 }
 
 // 删除自定义技能；内置目录永不触碰。返回 false = 不是可删的自定义技能
@@ -107,13 +128,6 @@ function getCrisisGuidance() {
 }
 
 /* ---------- 上下文构建 ---------- */
-
-function diaryLine(d) {
-  const s = d.summary || {};
-  const tags = (s.emotions || []).join('/');
-  const events = (s.keyEvents || []).join('；');
-  return `- [${d.dateKey}]${tags ? ` 情绪:${tags}｜` : ''}${events ? ` 事件:${events}｜` : ''}${d.text.slice(0, 160)}`;
-}
 
 function previousDiaryContext(cfg) {
   const info = time.getTimeInfo(cfg.wakeTime);
@@ -145,9 +159,7 @@ async function knowledgeContext(cfg, userText) {
 /* ---------- 工具注册 ---------- */
 
 function skillToolDefs() {
-  return listSkills()
-    .filter((s) => s.name !== 'crisis-response') // 危机指引非调用型
-    .map((s) => ({
+  return callableSkills().map((s) => ({
       type: 'function',
       function: {
         name: `skill_${s.name}`,
@@ -190,11 +202,8 @@ async function execSkill(toolName, { cfg, userText, onEvent, contextOverride } =
     .replace(/\{\{context\}\}/g, context)
     .replace(/\{\{user_request\}\}/g, userText || '');
 
-  const { baseUrl, apiKey, model } = cfg.llm;
   const r = await chatStream({
-    baseUrl,
-    apiKey,
-    model,
+    ...llmParams(cfg),
     messages: [
       { role: 'system', content: `你正在执行「${skill.name}」技能。严格按技能指令完成任务。` },
       { role: 'user', content: prompt },
@@ -219,4 +228,4 @@ async function execSkill(toolName, { cfg, userText, onEvent, contextOverride } =
   return { ok: true, result: r.content.trim() };
 }
 
-module.exports = { listSkills, skillToolDefs, execSkill, getCrisisGuidance, refresh, isBuiltinName, writeSkill, deleteSkill, clearCustomSkills };
+module.exports = { listSkills, callableSkills, skillToolDefs, execSkill, getCrisisGuidance, refresh, isBuiltinName, writeSkill, deleteSkill, clearCustomSkills };

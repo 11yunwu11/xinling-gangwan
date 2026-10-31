@@ -80,6 +80,7 @@
 
       <h3>本月月历 <span class="sec-note">有记录的日子按主情绪着色，点击查看那天写了什么</span></h3>
       <div id="calendar" class="calendar"></div>
+      <div id="day-detail" class="day-detail hidden"></div>
 
       <h3>最近 30 天情绪带</h3>
       <div id="emotion-strip" class="emotion-strip"></div>
@@ -164,6 +165,12 @@
       <p class="hint">内置卡片与内置技能受保护、不可删除（保证危机等安全兜底永远在）；自定义内容随时可增删。</p>
       <p id="kb-empty" class="hint hidden">知识库还没有构建。配置好 API Key 后服务会自动构建（knowledge/ 目录里的卡片 → 向量化入库）。</p>
     </section>
+
+    <!-- C11 全站免责声明 -->
+    <footer class="disclaimer">
+      本站仅为情绪记录与自我关怀的辅助工具，不提供专业心理或医疗建议；如你正处于危机之中，请拨打心理援助热线
+      12356，或联系身边信任的人。
+    </footer>
   </main>
   </div>
 
@@ -195,6 +202,11 @@
         <label>Embedding 模型
           <input id="cfg-embedding" placeholder="embedding-3">
         </label>
+      </details>
+      <details id="mcp-advanced">
+        <summary>MCP 服务器（可选，默认使用仓库自带的演示服务器）</summary>
+        <p class="cfg-hint">JSON 数组，每项：stdio 用 {"name":"…","command":"node","args":["server.mjs"]}；HTTP 用 {"name":"…","transport":"http","url":"…"}</p>
+        <textarea id="cfg-mcp" rows="4" placeholder='[]'></textarea>
       </details>
       <p id="cfg-error" class="cfg-error hidden"></p>
       <div class="modal-actions">

@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const store = require('./store');
 const time = require('./time');
-const { chatStream } = require('./llm');
+const { chatStream, llmParams } = require('./llm');
 
 const POOL_PATH = path.join(__dirname, '..', '..', 'task-pool.json');
 
@@ -67,9 +67,7 @@ async function completeTask(id, cfg) {
   let encouragement = FALLBACK_ENCOURAGEMENT;
   try {
     const r = await chatStream({
-      baseUrl: cfg.llm.baseUrl,
-      apiKey: cfg.llm.apiKey,
-      model: cfg.llm.model,
+      ...llmParams(cfg),
       messages: [
         { role: 'system', content: '你是温暖的鼓励者。用户刚完成了一个小任务。输出一到两句话（总共不超过 60 字），真诚、具体、不夸张、不喊口号。' },
         { role: 'user', content: `我刚完成了任务：「${tasks[idx].title}」` },

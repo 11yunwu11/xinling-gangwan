@@ -1,5 +1,6 @@
 {
   "port": 3000,
+  "host": "0.0.0.0",
   "wakeTime": "07:00",
   "llm": {
     "baseUrl": "https://open.bigmodel.cn/api/paas/v4",

@@ -35,14 +35,10 @@ async function ensureComfort(cfg) {
   return writeState({ key, text, generatedAt: new Date().toISOString(), read: false });
 }
 
-function getComfort() {
-  return readState();
-}
-
 function markRead() {
   const s = readState();
   if (!s) return null;
   return writeState({ ...s, read: true });
 }
 
-module.exports = { ensureComfort, getComfort, markRead };
+module.exports = { ensureComfort, markRead };

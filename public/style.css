@@ -457,6 +457,66 @@ main { flex: 1; padding: 24px 20px 40px; min-width: 0; }
 .form-msg { margin: 0; font-size: 12.5px; color: var(--accent); }
 .form-msg.hidden { display: none; }
 
+/* C11 全站免责声明（页脚） */
+.disclaimer {
+  max-width: 760px;
+  margin: 10px auto 26px;
+  padding: 0 16px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* F9 月历点击详情 */
+.day-detail {
+  margin: 10px 0 6px;
+  padding: 12px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px var(--shadow);
+}
+.day-detail h4 { margin: 0 0 8px; font-size: 14px; }
+.day-detail .hint { margin: 4px 0; }
+.day-diary { padding: 6px 0; border-top: 1px solid var(--border-soft); }
+.day-diary:first-of-type { border-top: none; }
+.day-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.day-diary p { margin: 0; font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+.day-diary ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
+.day-task { margin: 4px 0; font-size: 13.5px; }
+
+/* 设置弹窗内的 MCP 区 */
+#mcp-advanced {
+  margin: 8px 0 0;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+#mcp-advanced summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  list-style: none;
+}
+#mcp-advanced summary::-webkit-details-marker { display: none; }
+#mcp-advanced summary:hover { color: var(--accent); }
+#mcp-advanced[open] summary { margin-bottom: 8px; }
+.cfg-hint { margin: 0 0 8px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+#cfg-mcp {
+  width: 100%;
+  box-sizing: border-box;
+  font: 12px/1.6 ui-monospace, Consolas, monospace;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 8px 10px;
+  outline: none;
+  resize: vertical;
+}
+#cfg-mcp:focus { border-color: var(--accent); }
+
 /* 知识库卡片（能力页） */
 .kb-list { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .kb-card {

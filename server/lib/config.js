@@ -9,7 +9,20 @@ let config = null;
 
 function load() {
   if (fs.existsSync(CONFIG_PATH)) {
-    config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    try {
+      config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    } catch (err) {
+      // 配置损坏不拦启动：备份坏文件后退回示例配置，浏览器会弹出配置窗口让用户重填
+      const backup = `${CONFIG_PATH}.corrupt-${Date.now()}`;
+      try {
+        fs.renameSync(CONFIG_PATH, backup);
+        console.warn(`[config] config.json 解析失败（已备份到 ${path.basename(backup)}），退回示例配置：`, err.message);
+      } catch (e) {
+        console.warn('[config] config.json 解析失败且备份失败：', e.message);
+      }
+      config = JSON.parse(fs.readFileSync(EXAMPLE_PATH, 'utf8'));
+      config._usingExample = true;
+    }
   } else {
     // 没有 config.json 时退回示例配置，保证服务能启动并在浏览器里弹出配置窗口
     config = JSON.parse(fs.readFileSync(EXAMPLE_PATH, 'utf8'));
@@ -48,7 +61,8 @@ function save(partial = {}) {
   if (partial.embedding) merged.embedding = { ...(base.embedding || {}), ...partial.embedding };
   delete merged._usingExample;
 
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2), 'utf8');
+  fs.writeFileSync(`${CONFIG_PATH}.tmp`, JSON.stringify(merged, null, 2), 'utf8');
+  fs.renameSync(`${CONFIG_PATH}.tmp`, CONFIG_PATH); // 原子替换，中断不留半截文件
   load();
   return get();
 }

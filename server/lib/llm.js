@@ -3,6 +3,12 @@
 // - 流式（SSE）调用；边流边把文本增量回调给上层
 // - 解析流中的 tool_calls 增量并聚合为完整工具调用
 
+// 对话模型生效参数：与 embedding.embedParams 对称的收拢点，替代各处重复的 cfg.llm 解构
+function llmParams(cfg) {
+  const llm = (cfg && cfg.llm) || {};
+  return { baseUrl: llm.baseUrl, apiKey: llm.apiKey, model: llm.model };
+}
+
 async function chatStream({ baseUrl, apiKey, model, messages, tools, onDelta }) {
   const url = baseUrl.replace(/\/+$/, '') + '/chat/completions';
   const body = { model, messages, stream: true };
@@ -81,4 +87,4 @@ async function chatStream({ baseUrl, apiKey, model, messages, tools, onDelta }) 
   return { content, toolCalls, finishReason };
 }
 
-module.exports = { chatStream };
+module.exports = { chatStream, llmParams };

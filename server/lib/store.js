@@ -20,7 +20,10 @@ function readJson(file, fallback) {
 
 function writeJson(file, data) {
   ensureDir(path.dirname(file));
-  fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+  // 原子写：先写临时文件再改名，进程中断不会留下半截 JSON
+  const tmp = `${file}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+  fs.renameSync(tmp, file);
 }
 
 /* ---------- 任务 ---------- */

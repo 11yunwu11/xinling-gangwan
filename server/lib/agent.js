@@ -13,7 +13,7 @@ const skills = require('./skills');
 const mcp = require('./mcp');
 const chatdigest = require('./chatdigest');
 const { embedOne, embedParams } = require('./embedding');
-const { chatStream } = require('./llm');
+const { chatStream, llmParams } = require('./llm');
 
 const MAX_ROUNDS = 8;
 
@@ -64,9 +64,7 @@ function buildSystemPrompt(cfg, crisis, ragContext) {
   const info = time.getTimeInfo(cfg.wakeTime);
 
   const extras = [
-    ...skills.listSkills()
-      .filter((s) => s.name !== 'crisis-response')
-      .map((s) => `- skill_${s.name}（技能）：${s.description}`),
+    ...skills.callableSkills().map((s) => `- skill_${s.name}（技能）：${s.description}`),
     ...mcp.listMcpToolDefs().map((t) => `- ${t.function.name}（外部工具）：${t.function.description}`),
   ];
 
@@ -175,7 +173,6 @@ function ensureConfigured(cfg) {
 // rerollIndex：对指定下标的 assistant 消息"重 roll"——新回应作为新版本追加进它的 variants，
 // content 指向最新版本；不传则作为新消息追加。
 async function runAgent({ cfg, logicalKey, userText, onEvent, crisis, rerollIndex }) {
-  const { baseUrl, apiKey, model } = cfg.llm || {};
   const history = store.readChat(logicalKey).slice(-30);
 
   onEvent({ type: 'status', text: '翻翻记忆…' });
@@ -186,14 +183,11 @@ async function runAgent({ cfg, logicalKey, userText, onEvent, crisis, rerollInde
     ...history,
   ];
   const tools = [...BUILTIN_TOOL_DEFS, ...skills.skillToolDefs(), ...mcp.listMcpToolDefs()];
-
   for (let round = 0; round < MAX_ROUNDS; round++) {
     onEvent({ type: 'status', text: round === 0 ? '树洞在听…' : '整理一下…' });
 
     const r = await chatStream({
-      baseUrl,
-      apiKey,
-      model,
+      ...llmParams(cfg),
       messages,
       tools,
       onDelta: (t) => onEvent({ type: 'delta', text: t }),

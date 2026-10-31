@@ -425,16 +425,24 @@ async function loadDiaries() {
     for (const d of diaries) {
       const li = document.createElement('li');
       li.className = 'diary-item';
-      const chips = (d.summary && d.summary.emotions || []).map((e) => `<span class="chip">${e}</span>`).join('');
-      const events = (d.summary && d.summary.keyEvents || []).map((e) => `<li>${e}</li>`).join('');
-      li.innerHTML =
-        `<div class="diary-head"><span class="diary-date"></span>${chips}` +
-        `<button class="diary-del" title="删除这篇日记">删除</button></div>` +
-        `<div class="diary-text"></div>` +
-        (events ? `<div class="diary-events">关键事件：<ul>${events}</ul></div>` : '');
-      li.querySelector('.diary-date').textContent = d.dateKey || (d.createdAt || '').slice(0, 10);
-      li.querySelector('.diary-text').textContent = d.text;
-      li.querySelector('.diary-del').addEventListener('click', async () => {
+
+      const head = document.createElement('div');
+      head.className = 'diary-head';
+      const date = document.createElement('span');
+      date.className = 'diary-date';
+      date.textContent = d.dateKey || (d.createdAt || '').slice(0, 10);
+      head.appendChild(date);
+      for (const e of (d.summary && d.summary.emotions) || []) {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = e; // LLM 产出，textContent 渲染，不进 innerHTML
+        head.appendChild(chip);
+      }
+      const del = document.createElement('button');
+      del.className = 'diary-del';
+      del.title = '删除这篇日记';
+      del.textContent = '删除';
+      del.addEventListener('click', async () => {
         if (!confirm('确定删除这篇日记吗？\n删除后它会同时从树洞的记忆库中移除，不可恢复。')) return;
         try {
           const r = await (await fetch(`/api/diaries/${d.id}`, { method: 'DELETE' })).json();
@@ -447,6 +455,31 @@ async function loadDiaries() {
           alert(`删除失败：${err.message}`);
         }
       });
+      head.appendChild(del);
+      li.appendChild(head);
+
+      const text = document.createElement('div');
+      text.className = 'diary-text';
+      text.textContent = d.text;
+      li.appendChild(text);
+
+      const events = (d.summary && d.summary.keyEvents) || [];
+      if (events.length) {
+        const wrap = document.createElement('div');
+        wrap.className = 'diary-events';
+        const label = document.createElement('span');
+        label.textContent = '关键事件：';
+        const ul = document.createElement('ul');
+        for (const ev of events) {
+          const li2 = document.createElement('li');
+          li2.textContent = ev; // 同上，LLM 产出走 textContent
+          ul.appendChild(li2);
+        }
+        wrap.appendChild(label);
+        wrap.appendChild(ul);
+        li.appendChild(wrap);
+      }
+
       list.appendChild(li);
     }
   } catch {
@@ -770,6 +803,9 @@ async function openSetup(editMode) {
   $('#cfg-emb-key').placeholder = pub.embeddingSeparate
     ? '留空则保留已保存的 Key'
     : '留空则与对话模型用同一个 Key';
+  $('#cfg-mcp').value = (pub.mcpServers && pub.mcpServers.length)
+    ? JSON.stringify(pub.mcpServers, null, 2)
+    : '';
   $('#cfg-key').value = '';
   $('#cfg-key').placeholder = editMode && pub.configured
     ? '留空则保留已保存的 Key'
@@ -797,6 +833,20 @@ $('#cfg-save').addEventListener('click', async () => {
   };
   const embKey = $('#cfg-emb-key').value.trim();
   if (embKey) payload.embedding.apiKey = embKey;
+
+  // MCP 服务器（F0/F8）：留空 = 维持现状；"[]" = 清空；其余必须合法 JSON 数组
+  const mcpRaw = $('#cfg-mcp').value.trim();
+  if (mcpRaw) {
+    try {
+      const parsed = JSON.parse(mcpRaw);
+      if (!Array.isArray(parsed)) throw new Error('要求数组');
+      payload.mcpServers = parsed;
+    } catch (err) {
+      $('#cfg-error').textContent = `MCP 配置不是合法 JSON 数组：${err.message}`;
+      $('#cfg-error').classList.remove('hidden');
+      return;
+    }
+  }
 
   try {
     const r = await (await fetch('/api/config', {
@@ -872,6 +922,69 @@ function emotionColor(name) {
   return 'var(--muted)';
 }
 
+// F9：点击月历某天 → 展示那天的日记与任务（textContent 渲染；再点同一天收起）
+function showDayDetail(key, diaries, tasks) {
+  const panel = $('#day-detail');
+  if (!panel) return;
+  if (panel.dataset.day === key && !panel.classList.contains('hidden')) {
+    panel.classList.add('hidden');
+    panel.dataset.day = '';
+    return;
+  }
+  panel.dataset.day = key;
+  panel.innerHTML = '';
+
+  const title = document.createElement('h4');
+  title.textContent = `${key} 这一天`;
+  panel.appendChild(title);
+
+  const dayDiaries = diaries.filter((d) => d.dateKey === key);
+  const dayTasks = tasks.filter((t) => t.date === key);
+  if (!dayDiaries.length && !dayTasks.length) {
+    const p = document.createElement('p');
+    p.className = 'hint';
+    p.textContent = '这一天没有日记或任务记录。';
+    panel.appendChild(p);
+  }
+
+  for (const d of dayDiaries) {
+    const item = document.createElement('div');
+    item.className = 'day-diary';
+    const chips = document.createElement('div');
+    chips.className = 'day-chips';
+    for (const e of (d.summary && d.summary.emotions) || []) {
+      const c = document.createElement('span');
+      c.className = 'chip';
+      c.textContent = e;
+      chips.appendChild(c);
+    }
+    const text = document.createElement('p');
+    text.textContent = d.text;
+    item.appendChild(chips);
+    item.appendChild(text);
+    const events = (d.summary && d.summary.keyEvents) || [];
+    if (events.length) {
+      const ul = document.createElement('ul');
+      for (const ev of events) {
+        const li = document.createElement('li');
+        li.textContent = ev;
+        ul.appendChild(li);
+      }
+      item.appendChild(ul);
+    }
+    panel.appendChild(item);
+  }
+
+  for (const t of dayTasks) {
+    const p = document.createElement('p');
+    p.className = 'day-task';
+    p.textContent = `${t.status === 'done' ? '✅' : '⬜'} ${t.title}（${SOURCE_LABEL[t.source] || t.source}）`;
+    panel.appendChild(p);
+  }
+
+  panel.classList.remove('hidden');
+}
+
 function fmtDateKey(d) {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
@@ -884,6 +997,17 @@ async function loadReview() {
   } catch {
     return;
   }
+  // 日历点击详情（F9）需要日记与任务数据
+  let reviewDiaries = [];
+  let reviewTasks = [];
+  try {
+    const [ds, ts] = await Promise.all([fetch('/api/diaries'), fetch('/api/tasks')]);
+    reviewDiaries = await ds.json();
+    reviewTasks = await ts.json();
+  } catch {
+    /* 详情数据拿不到时日历照常显示，只是点击无内容 */
+  }
+  const showDay = (key) => showDayDetail(key, reviewDiaries, reviewTasks);
   const days = stats.days || {};
   const today = new Date();
 
@@ -911,6 +1035,8 @@ async function loadReview() {
       cell.style.background = emotionColor(info.topEmotion);
       cell.title = `${key}｜${info.count} 篇${info.topEmotion ? `｜${info.topEmotion}` : ''}`;
       cell.classList.add('recorded');
+      cell.style.cursor = 'pointer';
+      cell.addEventListener('click', () => showDay(key));
     }
     if (key === stats.todayKey) cell.classList.add('today');
     cal.appendChild(cell);

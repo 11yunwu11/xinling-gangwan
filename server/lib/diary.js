@@ -4,7 +4,15 @@
 const store = require('./store');
 const time = require('./time');
 const { embedOne, embedParams } = require('./embedding');
-const { chatStream } = require('./llm');
+const { chatStream, llmParams } = require('./llm');
+
+// 日记 → 提示词行（共享格式：skills 上下文与周报上下文都用这一份）
+function diaryLine(d) {
+  const s = d.summary || {};
+  const tags = (s.emotions || []).join('/');
+  const events = (s.keyEvents || []).join('；');
+  return `- [${d.dateKey}]${tags ? ` 情绪:${tags}｜` : ''}${events ? ` 事件:${events}｜` : ''}${d.text.slice(0, 160)}`;
+}
 
 function diaryEmbedText(text, summary) {
   const s = summary ? `情绪：${(summary.emotions || []).join('、')}；事件：${(summary.keyEvents || []).join('、')}` : '';
@@ -13,7 +21,6 @@ function diaryEmbedText(text, summary) {
 
 // 调 LLM 生成结构化总结；解析失败时退化为空总结（正文永远保留）
 async function summarizeDiary(cfg, text) {
-  const { baseUrl, apiKey, model } = cfg.llm;
   const prompt = [
     '请阅读下面这篇日记，只输出一个 JSON 对象（不要输出任何其他文字），格式：',
     '{"emotions":["情绪词，2~4个，如 低落/焦虑/平静"],"keyEvents":["关键事件，1~3条短句"],"theme":"一个主题词，如 考试/人际/休息"}',
@@ -23,9 +30,7 @@ async function summarizeDiary(cfg, text) {
   ].join('\n');
 
   const r = await chatStream({
-    baseUrl,
-    apiKey,
-    model,
+    ...llmParams(cfg),
     messages: [
       { role: 'system', content: '你是情绪日记的总结助手，只输出 JSON。' },
       { role: 'user', content: prompt },
@@ -61,4 +66,4 @@ async function saveDiary(cfg, text) {
   }
 }
 
-module.exports = { saveDiary, summarizeDiary, diaryEmbedText };
+module.exports = { saveDiary, summarizeDiary, diaryEmbedText, diaryLine };

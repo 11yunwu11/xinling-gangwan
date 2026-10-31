@@ -7,7 +7,7 @@
 const store = require('./store');
 const time = require('./time');
 const { embedOne, embedParams } = require('./embedding');
-const { chatStream } = require('./llm');
+const { chatStream, llmParams } = require('./llm');
 
 function readDigests() {
   return store.readJsonFile('chat_digests.json', []);
@@ -46,9 +46,7 @@ async function digestDay(cfg, key) {
   if (!msgs.some((m) => m.role === 'user')) return null;
 
   const r = await chatStream({
-    baseUrl: cfg.llm.baseUrl,
-    apiKey: cfg.llm.apiKey,
-    model: cfg.llm.model,
+    ...llmParams(cfg),
     messages: [
       {
         role: 'system',

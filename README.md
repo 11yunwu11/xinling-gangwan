@@ -58,26 +58,30 @@ npm run seed
 | 字段 | 说明 |
 |---|---|
 | `port` | 服务端口，默认 3000 |
+| `host` | 监听地址，默认 `0.0.0.0`（手机局域网访问需要）。只在本机用时改为 `"127.0.0.1"` 更安全 |
 | `wakeTime` | 你的起床时间（`HH:MM`），作为"逻辑日"切分线；夜班工作者可设为如 `16:00` |
 | `llm.baseUrl` / `llm.model` / `llm.apiKey` | OpenAI 兼容对话接口（可换任何兼容供应商） |
-| `embeddingModel` | Embedding 模型（用于日记/知识库向量化） |
+| `embedding.baseUrl` / `embedding.apiKey` / `embedding.model` | 可选：Embedding 独立接口，未填的字段沿用对话模型；更换模型后服务自动重嵌入全部向量，避免新旧向量混算 |
 | `rag.topK` / `rag.threshold` | 检索条数与相似度门槛 |
-| `mcpServers` | MCP 服务器列表（`stdio` 或 `http` 传输） |
+| `mcpServers` | MCP 服务器列表（也可在 ⚙ 设置里以 JSON 编辑；`stdio` 或 `http` 传输；工具调用 15 秒超时隔离） |
 | `crisisKeywords` / `hotlines` | 危机关键词表与求助资源卡片（**热线号码使用前请核实**） |
 
 ## 目录结构
 
 ```
 server/             Node 服务
+  index.js          入口：路由装配 + 启动初始化
+  routes/           按领域拆分的接口（config/chat/comfort/chats/tasks/diary/kb/skills/review/abilities/backup）
   lib/llm.js        OpenAI 兼容适配层（流式 + 工具调用）
   lib/agent.js      Agent 多步循环 + 动态工具注册表 + 危机关键词层
   lib/rag.js        双池余弦检索（日记记忆库 + 知识库，分源注入提示词）
   lib/diary.js      日记 AI 总结与向量化
   lib/kb.js         知识库构建（knowledge/*.md → data/kb.json）
   lib/skills.js     外挂技能系统（skills/*.md → 注册为 agent 工具）
-  lib/mcp.js        MCP 客户端（stdio + Streamable HTTP 双传输）
+  lib/mcp.js        MCP 客户端（stdio + Streamable HTTP 双传输，调用超时隔离）
+  lib/reembed.js    换 embedding 模型后的全量向量重算
   lib/time.js       逻辑日换算（按起床时间切分"今天/昨天"）
-  lib/store.js      data/ 目录 JSON 文件读写
+  lib/store.js      data/ 目录 JSON 文件读写（原子写）
 public/             浏览器界面（原生 HTML/JS，零构建）
 knowledge/          心理学知识卡片（16 张种子）
 skills/             外挂技能文件（知识问答/本周回顾/起床安抚/任务分解/危机指引）
@@ -89,4 +93,6 @@ data/               运行时数据（自动创建，已在 .gitignore）
 ## 安全说明
 
 - 你的 API Key 与所有数据（日记、对话、任务）都只存在你自己电脑的 `config.json` 和 `data/` 里，不会上传到任何服务器（模型 API 调用除外）。
-- 本工具不提供专业心理咨询或医疗建议；若你或你身边的人处于危机中，请拨打屏幕上展示的心理援助热线。
+- 服务默认监听 `0.0.0.0` 是为了支持手机局域网访问——同一 WiFi 内的设备都能打开你的页面并读到数据。只用本机时，在 `config.json` 加 `"host": "127.0.0.1"` 可关闭局域网暴露。
+- 内置知识卡片与技能（含危机应对内容）受保护、不可通过界面删除；你可以在「能力」页添加自己的卡片与技能。
+- 本工具不提供专业心理咨询或医疗建议（页面页脚常驻免责声明）；若你或你身边的人处于危机中，请拨打屏幕上展示的心理援助热线。

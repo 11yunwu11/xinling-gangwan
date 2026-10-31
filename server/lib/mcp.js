@@ -4,11 +4,22 @@
 // - 工具名编码为 mcp_<服务名slug>_<工具名>；任一服务器失败不影响整体启动
 
 const MCP_SDK = '@modelcontextprotocol/sdk';
+const TOOL_TIMEOUT_MS = 15000; // F8 错误隔离：MCP 工具/列表调用挂起时按超时失败，不卡死对话流
 
 const clients = []; // { serverName, client, tools: Map<encodedName, {client, remoteName, description}> }
 
 function slug(s) {
   return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'mcp';
+}
+
+// 给任意 MCP 调用套超时
+function withTimeout(promise, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} 超时（${TOOL_TIMEOUT_MS / 1000}s）——MCP 服务器无响应`)), TOOL_TIMEOUT_MS)
+    ),
+  ]);
 }
 
 function encodeToolName(serverName, toolName) {
@@ -33,9 +44,9 @@ async function connectOne(entry) {
   }
 
   const client = new Client({ name: 'xinling-gangwan', version: '0.1.0' });
-  await client.connect(transport);
+  await withTimeout(client.connect(transport), `连接「${entry.name}」`);
 
-  const { tools } = await client.listTools();
+  const { tools } = await withTimeout(client.listTools(), `获取「${entry.name}」工具列表`);
   const toolMap = new Map();
   for (const t of tools) {
     const encoded = encodeToolName(entry.name, t.name);
@@ -64,6 +75,19 @@ async function initMcpServers(cfg) {
     }
   }
   return results;
+}
+
+// 配置变更后重载：断开全部现有连接再按新配置重连
+async function reinitMcpServers(cfg) {
+  for (const { client } of clients) {
+    try {
+      await client.close();
+    } catch {
+      /* 关闭失败无妨，马上整体重建 */
+    }
+  }
+  clients.length = 0;
+  return initMcpServers(cfg);
 }
 
 function listMcpToolDefs() {
@@ -103,7 +127,10 @@ async function execMcpTool(encodedName, argsJson) {
     } catch {
       /* 按空参数调用 */
     }
-    const result = await info.client.callTool({ name: info.remoteName, arguments: args });
+    const result = await withTimeout(
+      info.client.callTool({ name: info.remoteName, arguments: args }),
+      `MCP 工具 ${encodedName}`
+    );
     const text = (result.content || [])
       .map((c) => (c.type === 'text' ? c.text : `[${c.type}]`))
       .join('\n');
@@ -112,4 +139,4 @@ async function execMcpTool(encodedName, argsJson) {
   return { ok: false, error: `未知 MCP 工具：${encodedName}` };
 }
 
-module.exports = { initMcpServers, listMcpToolDefs, listMcpToolsForUi, execMcpTool };
+module.exports = { initMcpServers, reinitMcpServers, listMcpToolDefs, listMcpToolsForUi, execMcpTool };
